@@ -7,6 +7,7 @@ from Models.ObjectState import ObjectState
 
 
 class ExcelWriter:
+    RESOLUTION: (int, int) = (1920, 1072)
     CAMERAS_COUNT: int = 3
 
     def __init__(self, filepath: str):
@@ -39,9 +40,14 @@ class ExcelWriter:
             x = self.sheet.cell(row=9 + offset, column=col).value
             y = self.sheet.cell(row=10 + offset, column=col).value
             z = self.sheet.cell(row=11 + offset, column=col).value
-            azimuth = self.sheet.cell(row=12 + offset, column=col).value
+            a = self.sheet.cell(row=12 + offset, column=col).value
 
-            camera = Camera(focal_length, x, y, z, azimuth, matrix_width, matrix_height)
+            camera = Camera(focal_length,
+                            x, y, z, a,
+                            matrix_width,
+                            matrix_height,
+                            self.RESOLUTION[0],
+                            self.RESOLUTION[1])
             cameras[i] = camera
 
         return cameras

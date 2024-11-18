@@ -7,6 +7,8 @@ class Camera:
     x: float
     y: float
     z: float
-    a: float  # азимут
-    width: float
-    height: float
+    a: float
+    matrix_w: float
+    matrix_h: float
+    res_w: int
+    res_h: int
