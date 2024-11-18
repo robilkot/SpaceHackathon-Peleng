@@ -13,17 +13,19 @@ class ExcelWriter:
         self.workbook: Workbook = openpyxl.load_workbook(self.path)
         self.sheet: Worksheet = self.workbook.active
 
-    def __del__(self):
-        pass  # TODO
-        # self.workbook.save(self.path)
-
     def write(self, msg: ObjectState):
         row = int(msg.t / 0.5 + 2)
+        column_offset = 18 # todo: shifts output to another column for debug
 
-        self.sheet.cell(row=row, column=1).value = msg.t
-        self.sheet.cell(row=row, column=2).value = msg.x
-        self.sheet.cell(row=row, column=3).value = msg.y
-        self.sheet.cell(row=row, column=4).value = msg.z
+        self.sheet.cell(row=row, column=1+column_offset).value = msg.t
+        self.sheet.cell(row=row, column=2+column_offset).value = msg.x
+        self.sheet.cell(row=row, column=3+column_offset).value = msg.y
+        self.sheet.cell(row=row, column=4+column_offset).value = msg.z
+
+        if DEBUG_WRITER:
+            print(f'write t:{msg.t} x:{msg.x} y:{msg.y} z:{msg.z}')
+
+        self.workbook.save(self.path)
 
     def read_params(self) -> dict[int, Camera]:
         col = 8
@@ -47,6 +49,9 @@ class ExcelWriter:
                             RESOLUTION[0],
                             RESOLUTION[1])
             cameras[i+1] = camera
+
+        if DEBUG_WRITER:
+            print(f'read {len(cameras)} cameras setup')
 
         return cameras
 

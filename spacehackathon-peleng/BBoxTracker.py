@@ -107,8 +107,10 @@ class BBoxTracker:
                 except StopIteration:
                     msg = ObjNotDetectedMessage(cam_id, timestamp)
 
-                try:
+                if DEBUG_TRACKER:
                     print(f'cam_id:{cam_id} t:{timestamp} detect {"FAIL" if msg is ObjNotDetectedMessage else ""}')
+
+                try:
                     self.on_tracked(msg)
                 except:
                     print("EGOR, YOUR STUFF CRASHED")
@@ -118,7 +120,8 @@ class BBoxTracker:
 
             # cv2.waitKey(0)  # For stepping through each frame
             if self.__exiting or cv2.waitKey(25) & 0xFF == ord('q'):
-                print(f'{cam_id} is exiting')
+                if DEBUG_TRACKER:
+                    print(f'cam_id:{cam_id} is exiting')
                 self.__exiting = True
                 break
 
