@@ -12,7 +12,6 @@ class CoordsWriter:
         self.sheet: Worksheet = self.workbook.active
 
     def __del__(self):
-        # pass
         self.workbook.save(self.path)
 
     def write(self, msg: CoordinatesTrackedMessage):
