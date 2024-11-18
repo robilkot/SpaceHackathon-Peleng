@@ -1,5 +1,5 @@
 from typing import Callable
-from .Models.CoordsMessages import *
+from .Models.ObjDetectedMessage import *
 
 
 class BBoxTracker:
@@ -13,3 +13,4 @@ class BBoxTracker:
     def start(self):
         # todo process frames here in loop, pass filenames?
         pass
+

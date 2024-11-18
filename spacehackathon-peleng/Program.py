@@ -1,6 +1,7 @@
 from Triangulator import Triangulator
 from CoordsWriter import CoordsWriter
 from BBoxTracker import BBoxTracker
+from Coordinator import Coordinator
 
 # Set up constants
 
@@ -16,7 +17,9 @@ filepath = "data/videoset0/Seq0_settings.xlsx"
 
 writer = CoordsWriter(filepath)
 
-triangulator = Triangulator(cameras, resolution, lambda msg: writer.write(msg))
+coordinator = Coordinator(lambda msg: writer.write(msg))
+
+triangulator = Triangulator(cameras, resolution, lambda msg: coordinator.accept(msg))
 
 tracker = BBoxTracker(lambda msg: triangulator.transform(msg))
 

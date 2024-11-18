@@ -18,12 +18,3 @@ class ObjDetectedMessage:
     w: int
     h: int
     t: float  # time in seconds at which the detection happened
-
-
-@dataclass
-class CoordinatesTrackedMessage:
-    x: float
-    y: float
-    z: float
-    t: float
-    dl_max: float  # error (may be none for now)

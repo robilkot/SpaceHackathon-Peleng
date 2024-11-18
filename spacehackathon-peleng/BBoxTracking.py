@@ -35,5 +35,5 @@ def process_video(path: str) -> list[tuple[int, int, int, int]]:
 
 
 if __name__ == "__main__":
-    bbox_rgb = process_video('E:\\SpaceHackathon-Peleng\\data\\videoset1\\Seq1_camera1.mov')
-    bbox_ir = process_video('E:\\SpaceHackathon-Peleng\\data\\videoset1\\Seq1_camera1T.mov')
+    bbox_rgb = process_video('data/videoset1/Seq1_camera1.mov')
+    bbox_ir = process_video('data/videoset1/Seq1_camera1T.mov')
