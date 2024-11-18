@@ -1,16 +1,21 @@
 from typing import Callable
 from Models.CoordinatesTriangulatedMessage import CoordinatesTriangulatedMessage
+from Models.ObjectState import ObjectState
 
 
 class Coordinator:
-    # Внутри должен быть словарь время-инфа об объекте
-    # и по мере получения всей нужной инфы об объекте запись из словаря удаляется
-    # и записывается в файл
-    def __init__(self, on_info_collected: Callable[[CoordinatesTriangulatedMessage], None]) -> None:
+    def __init__(self, on_info_collected: Callable[[ObjectState], None]) -> None:
         self.on_info_collected = on_info_collected
 
+        self.info: dict[float, ObjectState] = {}
+
     def accept(self, msg: CoordinatesTriangulatedMessage) -> None:
-        # todo сделать по комментарию выше
+        if self.info[msg.t] is None:
+            self.info[msg.t] = [msg]
+        else:
+            self.info[msg.t].append(msg)
+
+        # Проверить,
 
         result_coords = CoordinatesTriangulatedMessage()  # todo
         self.on_info_collected(result_coords)  # Когда вся инфа для назождения координат собрана, вызваем ивент

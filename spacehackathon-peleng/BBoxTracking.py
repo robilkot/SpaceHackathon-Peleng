@@ -1,5 +1,6 @@
+import threading
+
 import cv2
-import threaing
 #todo: ебануть параллельно
 def process_video_thread(path: str, bounding_boxes: list, window_name: str):
     cap = cv2.VideoCapture(path)
