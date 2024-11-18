@@ -90,7 +90,7 @@ def on_frame(frame: cv2.typing.MatLike, point: np.ndarray):
     
     
 if __name__ == '__main__':
-    track_point('../video/left.mp4', np.asarray((1150, 400)), on_frame)
+    track_point('video/left.mp4', np.asarray((1150, 400)), on_frame)
         
     cv2.destroyAllWindows()
     

@@ -17,6 +17,7 @@ if not success:
 bbox = cv2.selectROI('Tracking', img, False)
 tracker.init(img, bbox)
 
+
 def drawBox(img, bbox):
     x, y, w, h = int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3])
     cv2.rectangle(img, (x, y), ((x + w), (y + h)), (255, 0, 255), 3, 1)
