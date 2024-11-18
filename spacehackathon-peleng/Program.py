@@ -4,9 +4,8 @@ from BBoxTracker import BBoxTracker
 from Coordinator import Coordinator
 from Constants import *
 
-filepath = f"data/videoset{EXAMPLE}/Seq{EXAMPLE}_settings.xlsx"
 
-writer = ExcelWriter(filepath)
+writer = ExcelWriter(SETTINGS)
 
 cameras = writer.read_params()
 

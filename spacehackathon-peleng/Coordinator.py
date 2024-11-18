@@ -1,18 +1,16 @@
 from typing import Callable
 from Models.CoordinatesTriangulatedMessage import CoordinatesTriangulatedMessage
 from Models.ObjectState import ObjectState
+from Constants import *
 
 
 class Coordinator:
-    TIMESTEP: float = 0.5
-
     def __init__(self, on_info_collected: Callable[[ObjectState], None]) -> None:
         self.on_info_collected = on_info_collected
         self.info: dict[float, ObjectState] = {}
 
     def accept(self, msg: CoordinatesTriangulatedMessage) -> None:
-        # todo make sure x y z can be nullable if object disappeared from view
-        state = ObjectState(msg.x, msg.y, msg.z, msg.t, None, None, None)
+        state = ObjectState(msg.x, msg.y, msg.z, msg.t, None, None, None, None)
         self.info[msg.t] = state
 
         # Not optimal
@@ -23,23 +21,23 @@ class Coordinator:
             self.__raise_if_completed(obj)
 
     def __complete_object_state(self, current: ObjectState):
-        prev = self.info[current.t - self.TIMESTEP]
-        prev2 = self.info[current.t - self.TIMESTEP * 2]
+        prev = self.info[current.t - TIMESTEP]
+        prev2 = self.info[current.t - TIMESTEP * 2]
 
         if prev is not None and prev2 is not None:
-            prev.vel = [(prev.x - prev2.x) / self.TIMESTEP,
-                        (prev.y - prev2.y) / self.TIMESTEP,
-                        (prev.z - prev2.z) / self.TIMESTEP]
+            prev.vel = [(prev.x - prev2.x) / TIMESTEP,
+                        (prev.y - prev2.y) / TIMESTEP,
+                        (prev.z - prev2.z) / TIMESTEP]
 
         if prev.vel is not None and prev2.vel is not None:
-            prev.acc = [(prev.vel[0] - prev2.vel[0]) / self.TIMESTEP,
-                        (prev.vel[1] - prev2.vel[1]) / self.TIMESTEP,
-                        (prev.vel[2] - prev2.vel[2]) / self.TIMESTEP]
+            prev.acc = [(prev.vel[0] - prev2.vel[0]) / TIMESTEP,
+                        (prev.vel[1] - prev2.vel[1]) / TIMESTEP,
+                        (prev.vel[2] - prev2.vel[2]) / TIMESTEP]
 
         if prev.acc is not None and prev2.acc is not None:
-            prev.jerk = [(prev.acc[0] - prev2.acc[0]) / self.TIMESTEP,
-                         (prev.acc[1] - prev2.acc[1]) / self.TIMESTEP,
-                         (prev.acc[2] - prev2.acc[2]) / self.TIMESTEP]
+            prev.jerk = [(prev.acc[0] - prev2.acc[0]) / TIMESTEP,
+                         (prev.acc[1] - prev2.acc[1]) / TIMESTEP,
+                         (prev.acc[2] - prev2.acc[2]) / TIMESTEP]
 
         # Update current acceleration with given jerk
         current.acc[0] = prev.acc[0] + prev.jerk[0]

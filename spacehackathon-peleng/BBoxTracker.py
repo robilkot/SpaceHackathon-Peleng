@@ -5,14 +5,11 @@ from typing import Callable
 from Models.DetectionMessage import *
 from Constants import *
 
-PATH_RGB = 'data/videoset{}/Seq{}_camera{}.mov'
-PATH_IR = 'data/videoset{}/Seq{}_camera{}T.mov'
 
 class BBoxTracker:
     def __init__(self, on_tracked: Callable[[DetectionMessage], None]) -> None:
         self.on_tracked = on_tracked
-
-    TIMESTEP: float = 0.5
+        self.__exiting: bool = False
 
     def __read_downscaled(self, cap):
         ret, frame = cap.read()
@@ -97,10 +94,10 @@ class BBoxTracker:
                 cv2.rectangle(display2, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
             # Time to send event
-            if passed > self.TIMESTEP:
+            if passed > TIMESTEP:
                 last_frame_ticks = current_frame_ticks
 
-                timestamp = (tracking_frame_number - 1) * self.TIMESTEP
+                timestamp = (tracking_frame_number - 1) * TIMESTEP
                 tracking_frame_number += 1
                 intersecting_boxes = self.__find_intersecting_boxes(rgb_bboxes, ir_bboxes)
 
@@ -119,12 +116,15 @@ class BBoxTracker:
             cv2.imshow(f"RGB{cam_id}", display1)
             cv2.imshow(f"IR{cam_id}", display2)
 
-            # cv2.waitKey(0)
-            if cv2.waitKey(25) & 0xFF == ord('q'):
+            # cv2.waitKey(0)  # For stepping through each frame
+            if self.__exiting or cv2.waitKey(25) & 0xFF == ord('q'):
+                print(f'{cam_id} is exiting')
+                self.__exiting = True
                 break
 
         cap_rgb.release()
-        cv2.destroyAllWindows()
+        cv2.destroyWindow(f"RGB{cam_id}")
+        cv2.destroyWindow(f"IR{cam_id}")
 
     def start(self):
         for i in range(CAMERAS_COUNT):
