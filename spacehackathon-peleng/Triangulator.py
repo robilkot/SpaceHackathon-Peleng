@@ -8,8 +8,6 @@ from Models.ObjDetectedMessage import ObjDetectedMessage
 from Models.Camera import Camera
 
 
-
-
 def midpoint_triangulate(points: np.ndarray, cameras: list[Camera]):
     """
     Args:
@@ -79,6 +77,9 @@ class MatCamera:
     P: np.matrix
     R: np.matrix
     T: np.matrix
+    width: float
+    height: float
+    resolution: tuple[int, int]
 
 
 class Triangulator:
@@ -98,14 +99,20 @@ class Triangulator:
             )
             T = np.asarray([cam.x, cam.y, cam.z])
             P = np.hstack((R, T.reshape((-1, 1))))
-            self.cams[id] = MatCamera(P, R, T)
+            self.cams[id] = MatCamera(P, R, T, cam.width, cam.height, cam.res_w, cam.res_h)
         
         self.on_triangulated = on_triangulated
         self.scenes = {}
     
     def transform(self, mes: ObjDetectedMessage):
         scene = self.scenes[mes.cam_id] if mes.cam_id in self.scenes else Scene(self.cams.keys())
-        scene[mes.cam_id] = np.asarray((mes.w + mes.x / 2, mes.h + mes.y / 2))
+        cam = self.cams[mes.cam_id]
+        scene[mes.cam_id] = np.asarray(
+            (
+                (mes.x - mes.w / 2) / cam.resolution[0] * cam.width,
+                (-mes.y + mes.h / 2) / cam.resolution[1] * cam.height
+            )
+        )
         if mes.cam_id in self.scenes:
             self.scenes[mes.cam_id] = scene
 
