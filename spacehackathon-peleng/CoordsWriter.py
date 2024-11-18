@@ -2,7 +2,7 @@ import openpyxl
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
-from CoordsMessages import CoordinatesTrackedMessage
+from Models.ObjectState import ObjectState
 
 
 class CoordsWriter:
@@ -14,7 +14,7 @@ class CoordsWriter:
     def __del__(self):
         self.workbook.save(self.path)
 
-    def write(self, msg: CoordinatesTrackedMessage):
+    def write(self, msg: ObjectState):
         row = (int)(msg.t / 0.5 + 2)
 
         self.sheet.cell(row=row, column=1).value = msg.t
@@ -29,8 +29,8 @@ if __name__ == '__main__':
 
     writer = CoordsWriter(path)
 
-    msg1 = CoordinatesTrackedMessage(2.5, 1.7, -1.3, 2.5, 1)
-    msg2 = CoordinatesTrackedMessage(2.5, 1.7, -2.3, 3.0, 1)
+    msg1 = ObjectState(2.5, 1.7, -1.3, 2.5, None, None, None)
+    msg2 = ObjectState(2.5, 1.7, -2.3, 3.0, None, None, None)
 
     writer.write(msg1)
     writer.write(msg2)
