@@ -1,0 +1,3 @@
+RESOLUTION: (int, int) = (1920, 1072)
+CAMERAS_COUNT: int = 3
+EXAMPLE = 1

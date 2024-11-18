@@ -4,12 +4,10 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from Models.Camera import Camera
 from Models.ObjectState import ObjectState
+from Constants import *
 
 
 class ExcelWriter:
-    RESOLUTION: (int, int) = (1920, 1072)
-    CAMERAS_COUNT: int = 3
-
     def __init__(self, filepath: str):
         self.path = filepath
         self.workbook: Workbook = openpyxl.load_workbook(self.path)
@@ -35,7 +33,7 @@ class ExcelWriter:
         matrix_height = self.sheet.cell(row=3, column=col).value
 
         cameras = {}
-        for i in range(self.CAMERAS_COUNT):
+        for i in range(CAMERAS_COUNT):
             offset = (i - 1) * 7
             x = self.sheet.cell(row=9 + offset, column=col).value
             y = self.sheet.cell(row=10 + offset, column=col).value
@@ -46,9 +44,9 @@ class ExcelWriter:
                             x, y, z, a,
                             matrix_width,
                             matrix_height,
-                            self.RESOLUTION[0],
-                            self.RESOLUTION[1])
-            cameras[i] = camera
+                            RESOLUTION[0],
+                            RESOLUTION[1])
+            cameras[i+1] = camera
 
         return cameras
 

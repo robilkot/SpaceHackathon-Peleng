@@ -1,13 +1,15 @@
+import threading
+
 import cv2
 from typing import Callable
-from Models.ObjDetectedMessage import *
+from Models.DetectionMessage import *
+from Constants import *
 
-PATH_RGB = 'data/videoset1/Seq1_camera1.mov'
-PATH_IR = 'data/videoset1/Seq1_camera1T.mov'
-
+PATH_RGB = 'data/videoset{}/Seq{}_camera{}.mov'
+PATH_IR = 'data/videoset{}/Seq{}_camera{}T.mov'
 
 class BBoxTracker:
-    def __init__(self, on_tracked: Callable[[ObjDetectedMessage], None]) -> None:
+    def __init__(self, on_tracked: Callable[[DetectionMessage], None]) -> None:
         self.on_tracked = on_tracked
 
     TIMESTEP: float = 0.5
@@ -21,7 +23,7 @@ class BBoxTracker:
 
         # Get the current frame size
         height, width, _ = frame.shape
-        scale_percent = 50
+        scale_percent = 25
         new_width = int(width * scale_percent / 100)
         new_height = int(height * scale_percent / 100)
         dim = (new_width, new_height)
@@ -52,7 +54,7 @@ class BBoxTracker:
                     intersecting_ir_boxes.append(ir_box)
         return intersecting_ir_boxes
 
-    def __process_video(self, rgb_path: str, ir_path: str):
+    def __process_video(self, rgb_path: str, ir_path: str, cam_id: int):
         cap_rgb = cv2.VideoCapture(rgb_path)
         cap_ir = cv2.VideoCapture(ir_path)
 
@@ -98,18 +100,24 @@ class BBoxTracker:
             if passed > self.TIMESTEP:
                 last_frame_ticks = current_frame_ticks
 
-                intersecting_boxes = self.__find_intersecting_boxes(rgb_bboxes, ir_bboxes)
-
-                bbox = next(x for x in intersecting_boxes if x in ir_bboxes)
-
-                cam_id = 1  # todo
                 timestamp = (tracking_frame_number - 1) * self.TIMESTEP
                 tracking_frame_number += 1
-                msg = ObjDetectedMessage(cam_id, bbox[0], bbox[1], bbox[2], bbox[3], timestamp)
-                self.on_tracked(msg)
+                intersecting_boxes = self.__find_intersecting_boxes(rgb_bboxes, ir_bboxes)
 
-            cv2.imshow("RGB", display1)
-            cv2.imshow("IR", display2)
+                try:
+                    bbox = next(x for x in intersecting_boxes if x in ir_bboxes)
+                    msg = ObjDetectedMessage(cam_id, timestamp, bbox[0], bbox[1], bbox[2], bbox[3])
+                except StopIteration:
+                    msg = ObjNotDetectedMessage(cam_id, timestamp)
+
+                try:
+                    print(f'cam_id:{cam_id} t:{timestamp} detect {"FAIL" if msg is ObjNotDetectedMessage else ""}')
+                    self.on_tracked(msg)
+                except:
+                    print("EGOR, YOUR STUFF CRASHED")
+
+            cv2.imshow(f"RGB{cam_id}", display1)
+            cv2.imshow(f"IR{cam_id}", display2)
 
             # cv2.waitKey(0)
             if cv2.waitKey(25) & 0xFF == ord('q'):
@@ -119,8 +127,13 @@ class BBoxTracker:
         cv2.destroyAllWindows()
 
     def start(self):
-        # todo threading for 3 cameras
-        self.__process_video(PATH_RGB, PATH_IR)
+        for i in range(CAMERAS_COUNT):
+            path_rgb = PATH_RGB.format(EXAMPLE, EXAMPLE, i+1)
+            path_ir = PATH_IR.format(EXAMPLE, EXAMPLE, i+1)
+            t = threading.Thread(target=self.__process_video, args=(path_rgb, path_ir, i + 1))
+            t.start()
+
+        # self.__process_video(PATH_RGB, PATH_IR, 1)
 
 
 if __name__ == '__main__':
