@@ -16,8 +16,6 @@ class Triangulator:
         self.on_triangulated = on_triangulated
     
     def transform(self, mes: ObjDetectedMessage):
-        cum_point = np.asarray(mes.x + mes.w / 2, mes.y + mes.h / 2)
-        rel_point = cum_point / self.resolution - 0.5
 
         msg = CoordinatesTriangulatedMessage()  # todo: this is result msg
         self.on_triangulated(msg)

@@ -26,6 +26,8 @@ class Coordinator:
         prev = self.info[current.t - self.TIMESTEP]
         prev2 = self.info[current.t - self.TIMESTEP * 2]
 
+        # todo 3rd derivative for case when sphere stalled
+
         if prev is not None and prev2 is not None:
             prev.vel = [(prev.x - prev2.x) / self.TIMESTEP,
                         (prev.y - prev2.y) / self.TIMESTEP,
