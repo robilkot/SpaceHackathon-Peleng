@@ -26,8 +26,6 @@ class Coordinator:
         prev = self.info[current.t - self.TIMESTEP]
         prev2 = self.info[current.t - self.TIMESTEP * 2]
 
-        # todo 3rd derivative for case when sphere stalled
-
         if prev is not None and prev2 is not None:
             prev.vel = [(prev.x - prev2.x) / self.TIMESTEP,
                         (prev.y - prev2.y) / self.TIMESTEP,
@@ -39,14 +37,14 @@ class Coordinator:
                         (prev.vel[2] - prev2.vel[2]) / self.TIMESTEP]
 
         if prev.acc is not None and prev2.acc is not None:
-            prev.third = [(prev.acc[0] - prev2.acc[0]) / self.TIMESTEP,
-                          (prev.acc[1] - prev2.acc[1]) / self.TIMESTEP,
-                          (prev.acc[2] - prev2.acc[2]) / self.TIMESTEP]
+            prev.jerk = [(prev.acc[0] - prev2.acc[0]) / self.TIMESTEP,
+                         (prev.acc[1] - prev2.acc[1]) / self.TIMESTEP,
+                         (prev.acc[2] - prev2.acc[2]) / self.TIMESTEP]
 
-        #Update current acceleration with given third
-        current.acc[0] = prev.acc[0] + prev.third[0]
-        current.acc[1] = prev.acc[1] + prev.third[1]
-        current.acc[2] = prev.acc[2] + prev.third[2]
+        # Update current acceleration with given jerk
+        current.acc[0] = prev.acc[0] + prev.jerk[0]
+        current.acc[1] = prev.acc[1] + prev.jerk[1]
+        current.acc[2] = prev.acc[2] + prev.jerk[2]
 
         # Update current velocity with given acceleration
         current.vel[0] = prev.vel[0] + prev.acc[0]
@@ -61,4 +59,5 @@ class Coordinator:
     def __raise_if_completed(self, s: ObjectState):
         # todo: dl_max???
         if not [x for x in (s.x, s.y, s.z, s.vel, s.acc) if x is None]:
+            print(f"Info collected for {s.t}")
             self.on_info_collected(s)

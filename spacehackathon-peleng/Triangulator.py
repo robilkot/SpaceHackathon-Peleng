@@ -59,10 +59,10 @@ class Scene:
         self._cam_dict: dict[int, np.ndarray] = dict.fromkeys(cam_ids, None)
     
     def is_full(self):
-        return all(self._cam_dict.values)
+        return all(self._cam_dict.values())
     
     def __iter__(self) -> Iterable[tuple[int, np.ndarray]]:
-        return iter(self._cam_dict.values)
+        return iter(self._cam_dict.values())
     
     def __getitem__(sefl, id):
         return sefl._cam_dict[id]
@@ -86,9 +86,9 @@ class Triangulator:
                  cams: dict[int, Camera],
                  on_triangulated: Callable[[CoordinatesTriangulatedMessage], None]
     ) -> None:
-        self.cams = dict.fromkeys(cams.keys)
+        self.cams = dict.fromkeys(cams.keys())
         
-        for id, cam in cams.items:
+        for id, cam in cams.items():
             R = np.asarray(
                 [
                     [np.cos(cam.a), -np.sin(cam.a), 0],
@@ -97,27 +97,28 @@ class Triangulator:
                 ]
             )
             T = np.asarray([cam.x, cam.y, cam.z])
-            P = np.vstack((R, T.reshape((-1, 1))))
+            P = np.hstack((R, T.reshape((-1, 1))))
             self.cams[id] = MatCamera(P, R, T)
         
         self.on_triangulated = on_triangulated
         self.scenes = {}
     
     def transform(self, mes: ObjDetectedMessage):
-        scene = self.scenes[mes.cam_id] if mes.cam_id in self.scenes else Scene(self.cams.keys) 
+        scene = self.scenes[mes.cam_id] if mes.cam_id in self.scenes else Scene(self.cams.keys())
         scene[mes.cam_id] = np.asarray((mes.w + mes.x / 2, mes.h + mes.y / 2))
         if mes.cam_id in self.scenes:
             self.scenes[mes.cam_id] = scene
-        
+
         if scene.is_full():
-            points = np.asarray([x for x in self.scenes.values])
+            points = np.asarray([x for x in self.scenes.values()])
             
-            midpoint = midpoint_triangulate(points, self.cams.values)
+            midpoint = midpoint_triangulate(points, self.cams.values())
             
             msg = CoordinatesTriangulatedMessage(
                 *midpoint,
                 mes.t,
                 0 # TODO
-            )  
+            )
+            print("on_triangulated")
             self.on_triangulated(msg)
             

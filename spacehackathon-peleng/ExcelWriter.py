@@ -15,7 +15,8 @@ class ExcelWriter:
         self.sheet: Worksheet = self.workbook.active
 
     def __del__(self):
-        self.workbook.save(self.path)
+        pass  # TODO
+        # self.workbook.save(self.path)
 
     def write(self, msg: ObjectState):
         row = int(msg.t / 0.5 + 2)
