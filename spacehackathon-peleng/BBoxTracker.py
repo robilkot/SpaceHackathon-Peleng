@@ -52,6 +52,13 @@ class BBoxTracker:
         return intersecting_ir_boxes
 
     def __process_video(self, rgb_path: str, ir_path: str, cam_id: int):
+        def exit2(error: Exception | None = None):
+            if DEBUG_TRACKER:
+                print(f'cam_id:{cam_id} is exiting {"(CRASH)" if error else ""}')
+                if error is not None:
+                    print(error)
+            self.__exiting = True
+
         cap_rgb = cv2.VideoCapture(rgb_path)
         cap_ir = cv2.VideoCapture(ir_path)
 
@@ -112,17 +119,15 @@ class BBoxTracker:
 
                 try:
                     self.on_tracked(msg)
-                except:
-                    print("EGOR, YOUR STUFF CRASHED")
+                except Exception as e:
+                    exit2(e)
 
             cv2.imshow(f"RGB{cam_id}", display1)
             cv2.imshow(f"IR{cam_id}", display2)
 
             # cv2.waitKey(0)  # For stepping through each frame
             if self.__exiting or cv2.waitKey(25) & 0xFF == ord('q'):
-                if DEBUG_TRACKER:
-                    print(f'cam_id:{cam_id} is exiting')
-                self.__exiting = True
+                exit2()
                 break
 
         cap_rgb.release()
