@@ -38,6 +38,16 @@ class Coordinator:
                         (prev.vel[1] - prev2.vel[1]) / self.TIMESTEP,
                         (prev.vel[2] - prev2.vel[2]) / self.TIMESTEP]
 
+        if prev.acc is not None and prev2.acc is not None:
+            prev.third = [(prev.acc[0] - prev2.acc[0]) / self.TIMESTEP,
+                          (prev.acc[1] - prev2.acc[1]) / self.TIMESTEP,
+                          (prev.acc[2] - prev2.acc[2]) / self.TIMESTEP]
+
+        #Update current acceleration with given third
+        current.acc[0] = prev.acc[0] + prev.third[0]
+        current.acc[1] = prev.acc[1] + prev.third[1]
+        current.acc[2] = prev.acc[2] + prev.third[2]
+
         # Update current velocity with given acceleration
         current.vel[0] = prev.vel[0] + prev.acc[0]
         current.vel[1] = prev.vel[1] + prev.acc[1]

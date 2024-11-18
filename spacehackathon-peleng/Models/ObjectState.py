@@ -10,3 +10,4 @@ class ObjectState:
     dl_max: float | None
     vel: list[float] | None
     acc: list[float] | None
+    third: list[float] | None
