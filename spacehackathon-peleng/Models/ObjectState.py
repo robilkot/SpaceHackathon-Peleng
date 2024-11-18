@@ -7,6 +7,6 @@ class ObjectState:
     y: float | None
     z: float | None
     t: float
-    dl_max: float | None  # todo
-    vel: tuple[float, float, float] | None
-    acc: tuple[float, float, float] | None
+    dl_max: float | None
+    vel: list[float] | None
+    acc: list[float] | None
