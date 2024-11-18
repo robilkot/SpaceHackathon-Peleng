@@ -22,16 +22,24 @@ class Coordinator:
         self.__raise_if_completed(state)
 
     def __complete_object_state(self, current: ObjectState):
-        if self.info[current.t - self.TIMESTEP] is not None:
-            prev = self.info[current.t - self.TIMESTEP]
+        prev = self.info[current.t - self.TIMESTEP]
+        prev2 = self.info[current.t - self.TIMESTEP * 2]
 
-            velocity = math.sqrt(
-                (current.x - prev.x) ** 2 + (current.y - prev.y) ** 2 + (current.z - prev.z) ** 2
-            ) / self.TIMESTEP
+        if prev is not None and prev2 is not None:
+            velocity = [(prev.x - prev2.x) / self.TIMESTEP,
+                        (prev.y - prev2.y) / self.TIMESTEP,
+                        (prev.z - prev2.z) / self.TIMESTEP]
 
-            current.vel = velocity
+            prev.vel = velocity
 
-        # todo calculate acc
+        if current.vel is not None and prev.vel is not None:
+            acc = [(prev.vel[0] - prev2.vel[0]) / self.TIMESTEP,
+                   (prev.vel[1] - prev2.vel[1]) / self.TIMESTEP,
+                   (prev.vel[2] - prev2.vel[2]) / self.TIMESTEP]
+
+            prev.acc = acc
+
+        # todo calculate x y z for current given acc and vel if not present yet
 
     def __raise_if_completed(self, state: ObjectState):
         if state.dl_max is not None and state.acc is not None and state.vel is not None:
