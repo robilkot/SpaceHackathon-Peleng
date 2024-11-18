@@ -1,21 +1,16 @@
 from Triangulator import Triangulator
-from CoordsWriter import CoordsWriter
+from ExcelWriter import ExcelWriter
 from BBoxTracker import BBoxTracker
 from Coordinator import Coordinator
 
-# Set up constants
 
-cameras = {
-    # todo
-}
-
-resolution = (1920, 1072)  # todo move to camera class
+resolution = (1920, 1072)
 
 filepath = "data/videoset0/Seq0_settings.xlsx"
 
-# Init services
+writer = ExcelWriter(filepath)
 
-writer = CoordsWriter(filepath)
+cameras = writer.read_params()
 
 coordinator = Coordinator(lambda msg: writer.write(msg))
 

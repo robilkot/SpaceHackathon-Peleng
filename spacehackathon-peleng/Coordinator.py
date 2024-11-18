@@ -1,4 +1,3 @@
-import math
 from typing import Callable
 from Models.CoordinatesTriangulatedMessage import CoordinatesTriangulatedMessage
 from Models.ObjectState import ObjectState
@@ -9,7 +8,6 @@ class Coordinator:
 
     def __init__(self, on_info_collected: Callable[[ObjectState], None]) -> None:
         self.on_info_collected = on_info_collected
-
         self.info: dict[float, ObjectState] = {}
 
     def accept(self, msg: CoordinatesTriangulatedMessage) -> None:
@@ -32,15 +30,16 @@ class Coordinator:
 
             prev.vel = velocity
 
-        if current.vel is not None and prev.vel is not None:
+        if prev.vel is not None and prev2.vel is not None:
             acc = [(prev.vel[0] - prev2.vel[0]) / self.TIMESTEP,
                    (prev.vel[1] - prev2.vel[1]) / self.TIMESTEP,
                    (prev.vel[2] - prev2.vel[2]) / self.TIMESTEP]
 
             prev.acc = acc
 
-        # todo calculate x y z for current given acc and vel if not present yet
+        # todo extrapolate x y z for current given acc and vel if not present yet
 
-    def __raise_if_completed(self, state: ObjectState):
-        if state.dl_max is not None and state.acc is not None and state.vel is not None:
-            self.on_info_collected(state)
+    def __raise_if_completed(self, s: ObjectState):
+        # todo: dl_max???
+        if None not in (s.x, s.y, s.z, s.vel, s.acc):
+            self.on_info_collected(s)
