@@ -2,8 +2,8 @@ from typing import Callable
 
 import numpy as np
 from openpyxl.drawing.geometry import Camera
-from .Models.CoordinatesTriangulatedMessage import CoordinatesTriangulatedMessage
-from .Models.ObjDetectedMessage import ObjDetectedMessage
+from Models.CoordinatesTriangulatedMessage import CoordinatesTriangulatedMessage
+from Models.ObjDetectedMessage import ObjDetectedMessage
 
 
 class Triangulator:

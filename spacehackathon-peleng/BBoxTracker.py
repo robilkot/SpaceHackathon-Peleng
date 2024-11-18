@@ -1,6 +1,6 @@
 from typing import Callable
-from .Models.ObjDetectedMessage import *
-from .BBoxTracking import *
+from Models.ObjDetectedMessage import *
+from BBoxTracking import *
 
 PATH_RGB = 'data/videoset1/Seq1_camera1.mov'
 PATH_IR = 'data/videoset1/Seq1_camera1T.mov'
@@ -30,6 +30,8 @@ class BBoxTracker:
             вызываем self.on_tracked(msg) где мсг - новое сообщение
 
         '''
-
-        # return process_videos(PATH_RGB, PATH_IR)
-
+        rgb_boxes = process_video(PATH_RGB)
+        ir_boxes = process_video(PATH_IR)
+        intersecting_boxes = find_intersecting_boxes(rgb_boxes, ir_boxes)
+        #todo: переделать на потоки
+        #todo: передавать в ObjDetectedMessage распакованный intersecting
