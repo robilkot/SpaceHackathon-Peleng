@@ -59,8 +59,11 @@ class BBoxTracker:
                     print(error)
             self.__exiting = True
             cap_rgb.release()
-            cv2.destroyWindow(f"RGB{cam_id}")
-            cv2.destroyWindow(f"IR{cam_id}")
+            cap_ir.release()
+
+            if SHOW_TRACKER:
+                cv2.destroyWindow(f"RGB{cam_id}")
+                cv2.destroyWindow(f"IR{cam_id}")
 
         cap_rgb = cv2.VideoCapture(rgb_path)
         cap_ir = cv2.VideoCapture(ir_path)
@@ -223,9 +226,7 @@ class BBoxTracker:
             t = threading.Thread(target=self.__process_video, args=(path_rgb, path_ir, i + 1))
             t.start()
 
-        # self.__process_video(PATH_RGB, PATH_IR, 1)
-
-
-if __name__ == '__main__':
-    tracker = BBoxTracker(lambda msg: print(msg.t))
-    tracker.start()
+        while True:
+            if input('enter q to exit') == 'q':
+                self.__exiting = True
+                break
