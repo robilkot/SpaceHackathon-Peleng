@@ -4,23 +4,23 @@ from typing import Callable, Iterable
 import numpy as np
 import numpy.linalg as npla
 from Models.CoordinatesTriangulatedMessage import CoordinatesTriangulatedMessage
-from Models.DetectionMessage import DetectionMessage
+from Models.DetectionMessage import DetectionMessage, ObjNotDetectedMessage
 from Models.Camera import Camera
 
 
-def midpoint_triangulate(points: np.ndarray, cameras: list[Camera]):
-    n = len(cameras)                                         # No. of cameras
+def midpoint_triangulate(camera_point: dict[Camera, np.ndarray]):
+    n = len(camera_point)                                         # No. of cameras
 
     I = np.eye(3)                                        # 3x3 identity matrix
     A = np.zeros((3,n))
     B = np.zeros((3,n))
     sigma2 = np.zeros((3,1))
 
-    for i in range(n):
-        a = -np.transpose(cameras[i].R).dot(cameras[i].T)        # ith camera position
+    for i, camera in enumerate(camera_point):
+        a = -np.transpose(camera.R).dot(camera.T)        # ith camera position
         A[:,i,None] = a
 
-        b = npla.inv(cameras[i].P).dot(points[:,i])              # Directional vector
+        b = npla.inv(camera.P).dot(camera_point[camera])              # Directional vector
         b = b / b[3]
         b = b[:3,None] - a
         b = b / npla.norm(b)
@@ -97,18 +97,26 @@ class Triangulator:
         self.on_triangulated = on_triangulated
         self.scenes = {}
     
-    def transform(self, mes: DetectionMessage):
-        scene = self.scenes[mes.t] if mes.cam_id in self.scenes else Scene(self.cams.keys())
+    def transform(self, mes: DetectionMessage | ObjNotDetectedMessage):
+        if isinstance(mes, ObjNotDetectedMessage):
+            print("Triangulator: ObjNotDetectedMessage instance has received")
+            return CoordinatesTriangulatedMessage(
+                None,
+                None,
+                None,
+                mes.t,
+                None
+            )
+        scene = self.scenes.get(mes.t, Scene(self.cams.keys()))
 
         cam = self.cams[mes.cam_id]
         scene[mes.cam_id] = np.asarray(
             (
                 (mes.x - mes.w / 2) / cam.resolution[0] * cam.width,
-                (-mes.y + mes.h / 2) / cam.resolution[1] * cam.height
+                -(mes.y - mes.h / 2) / cam.resolution[1] * cam.height
             )
         )
-        if mes.cam_id in self.scenes:
-            self.scenes[mes.cam_id] = scene
+        self.scenes[mes.t] = scene
 
         if scene.is_full():
             points = np.asarray([x for x in self.scenes.values()])

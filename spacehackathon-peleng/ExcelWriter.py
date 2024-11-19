@@ -36,7 +36,7 @@ class ExcelWriter:
 
         cameras = {}
         for i in range(CAMERAS_COUNT):
-            offset = (i - 1) * 7
+            offset = i * 7
             x = self.sheet.cell(row=9 + offset, column=col).value
             y = self.sheet.cell(row=10 + offset, column=col).value
             z = self.sheet.cell(row=11 + offset, column=col).value

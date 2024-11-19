@@ -1,4 +1,4 @@
-RESOLUTION: (int, int) = (1920, 1072)
+RESOLUTION: tuple[int, int] = (1920, 1072)
 TIMESTEP: float = 0.5
 CAMERAS_COUNT: int = 1
 EXAMPLE = 5
