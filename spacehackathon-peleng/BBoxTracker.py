@@ -59,8 +59,10 @@ class BBoxTracker:
                     print(error)
             self.__exiting = True
             cap_rgb.release()
-            cv2.destroyWindow(f"RGB{cam_id}")
-            cv2.destroyWindow(f"IR{cam_id}")
+            cap_ir.release()
+            if SHOW_TRACKER:
+                cv2.destroyWindow(f"RGB{cam_id}")
+                cv2.destroyWindow(f"IR{cam_id}")
 
         cap_rgb = cv2.VideoCapture(rgb_path)
         cap_ir = cv2.VideoCapture(ir_path)
@@ -77,7 +79,7 @@ class BBoxTracker:
         cap_rgb.set(cv2.CAP_PROP_POS_FRAMES, START_FRAME)
         cap_ir.set(cv2.CAP_PROP_POS_FRAMES, START_FRAME)
 
-        frame = 0
+        frame = START_FRAME
         while cap_rgb.isOpened() and cap_ir.isOpened():
             rgb_bboxes = []
             ir_bboxes = []
@@ -109,10 +111,6 @@ class BBoxTracker:
                 (x, y, w, h) = cv2.boundingRect(contour)
                 ir_bboxes.append((x, y, w, h))
                 cv2.rectangle(display2, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-            # todo
-            #if frame % 10 == 0:
-            #    # todo Леша здесь должен предиктор звать
 
             # Time to send event
             frame += 1
@@ -163,10 +161,8 @@ class BBoxTracker:
                     state = ObjectState(x_res, y_res, 0, timestamp, None, None, None, None)
                     info[timestamp] = state
 
-                    # todo Леша это очищает данные для предиктора
-                    # this erases old data (3 frames left)
                     info = {key: value for key, value in zip(info.keys(), info.values()) if value.t > timestamp - LEFTED_FRAMES * TIMESTEP}
-                    print(f"purged, {len(info)} left")
+                    # print(f"purged, {len(info)} left")
 
                     if DEBUG_TRACKER:
                         print(f'cam_id:{cam_id} t:{timestamp} ok')
@@ -209,8 +205,9 @@ class BBoxTracker:
                     # Хз что случилось но бывает
                     pass
 
-            cv2.imshow(f"RGB{cam_id}", display1)
-            cv2.imshow(f"IR{cam_id}", display2)
+            if SHOW_TRACKER:
+                cv2.imshow(f"RGB{cam_id}", display1)
+                cv2.imshow(f"IR{cam_id}", display2)
 
             # cv2.waitKey(0)  # For stepping through each frame
             if self.__exiting or cv2.waitKey(25) & 0xFF == ord('q'):
@@ -223,9 +220,13 @@ class BBoxTracker:
             t = threading.Thread(target=self.__process_video, args=(path_rgb, path_ir, i + 1))
             t.start()
 
-        # self.__process_video(PATH_RGB, PATH_IR, 1)
+        while True:
+            if input("q to exit") == 'q':
+                self.__exiting = True
+                break
 
 
 if __name__ == '__main__':
     tracker = BBoxTracker(lambda msg: print(msg.t))
     tracker.start()
+

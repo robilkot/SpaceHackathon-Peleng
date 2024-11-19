@@ -37,8 +37,8 @@ class ExcelWriter:
         col = 8
 
         focal_length = self.sheet.cell(row=3, column=col).value
-        matrix_width = self.sheet.cell(row=3, column=col).value
-        matrix_height = self.sheet.cell(row=3, column=col).value
+        matrix_width = self.sheet.cell(row=4, column=col).value
+        matrix_height = self.sheet.cell(row=5, column=col).value
 
         cameras = {}
         for i in range(CAMERAS_COUNT):
@@ -55,6 +55,8 @@ class ExcelWriter:
                             RESOLUTION[0],
                             RESOLUTION[1])
             cameras[i+1] = camera
+
+            print(f"read camera {camera}")
 
         if DEBUG_WRITER:
             print(f'read {len(cameras)} cameras setup')

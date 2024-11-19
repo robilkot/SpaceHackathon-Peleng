@@ -3,42 +3,18 @@ from dataclasses import dataclass
 
 
 import numpy as np
-import numpy.linalg as npla
+import cv2
+from Constants import *
+
 from Models.CoordinatesTriangulatedMessage import CoordinatesTriangulatedMessage
-from Models.DetectionMessage import DetectionMessage, ObjNotDetectedMessage
+from Models.DetectionMessage import DetectionMessage, ObjNotDetectedMessage, ObjDetectedMessage
 from Models.Camera import Camera
 
 
 @dataclass()
 class MatCamera:
     P: np.matrix
-    R: np.matrix
     T: np.matrix
-    width: float
-    height: float
-    resolution: tuple[int, int]
-
-
-def midpoint_triangulate(A, B):
-    n = 3                                         # No. of cameras
-
-    I = np.eye(3)
-    sigma2 = np.zeros((3,1))
-
-    for i in range(n):
-        a = A[:,i,None]
-        b = B[:,i,None]
-
-        sigma2 = sigma2 + b.dot(b.transpose().dot(a))
-
-    C = (n * I) - B.dot(B.transpose())
-    Cinv = npla.inv(C)
-    sigma1 = np.sum(A, axis=1)[:,None]
-    m1 = I + B.dot(np.transpose(B).dot(Cinv))
-    m2 = Cinv.dot(sigma2)
-
-    midpoint = (1/n) * m1.dot(sigma1) - m2
-    return midpoint
 
 
 class Scene:
@@ -75,25 +51,32 @@ class Triangulator:
         self.cams: dict[int, MatCamera] = dict.fromkeys(cams.keys())
         self._cams = cams
         for id, cam in cams.items():
-            R = np.asarray(
-                [
-                    [np.cos(cam.a), -np.sin(cam.a), 0],
-                    [np.sin(cam.a), np.cos(cam.a), 0],
-                    [0, 0, 1],
-                ]
-            ).transpose()
-            T = np.asarray([cam.x, cam.y, cam.z]).reshape((-1, 1))
-            T = -R.dot(T)
-            # P = np.hstack((R, T.reshape((-1, 1))))
-            K = np.asarray(
-                [
-                    [cam.focal_length, 0, cam.matrix_w / 2  ],
-                    [0, cam.focal_length, cam.matrix_h / 2],
+
+            # https://en.wikipedia.org/wiki/Camera_resectioning
+            fx = cam.focal_length / cam.matrix_w * cam.res_w
+            fy = cam.focal_length / cam.matrix_h * cam.res_h
+            cx = cam.res_w / 2
+            cy = cam.res_h / 2
+
+            K = np.asarray([
+                    [fx, 0, cx],
+                    [0, fy, cy],
                     [0, 0, 1]
-                ]
-            )
-            P = K.dot(np.hstack((R, T.reshape((-1, 1)))))
-            self.cams[id] = MatCamera(P, R, T, cam.matrix_w, cam.matrix_h, (cam.res_w, cam.res_h))
+                ])
+
+            theta = np.radians(cam.azimut)  # у тебя было не в радианах, но это не помогло
+            R = np.array([
+                    [np.cos(theta), -np.sin(theta), 0],
+                    [np.sin(theta), np.cos(theta), 0],
+                    [0, 0, 1],
+            ])
+
+            T = np.array([cam.x, cam.y, cam.z])
+
+            RT = np.hstack((R, T.reshape(-1, 1)))
+            P = K @ RT
+            self.cams[id] = MatCamera(P, T)
+            # print(f"cam{id}", K, R, T, P, sep='\n')
 
         self.on_triangulated = on_triangulated
         self.scenes = {}
@@ -104,61 +87,57 @@ class Triangulator:
         if isinstance(mes, ObjNotDetectedMessage):
             scene[mes.cam_id] = 0
             print("Triangulator: ObjNotDetectedMessage instance has received")
+        elif isinstance(mes, ObjDetectedMessage):
+            scene[mes.cam_id] = np.array((
+                    (mes.x + mes.w / 2),
+                    (mes.y + mes.h / 2),
+            ))
         else:
-            print(mes.x + mes.w / 2, cam.resolution[0], cam.width)
-            scene[mes.cam_id] = np.asarray(
-                (
-                    (mes.x + mes.w / 2) / cam.resolution[0] - 0.5,
-                    0.5 - (mes.y + mes.h / 2) / cam.resolution[1]
-                )
-            )
+            print("The fuck???")
+
         self.scenes[mes.t] = scene
 
         print(f"Triangulator: DetectionMessage instance has received. {mes.cam_id = }: ", scene[mes.cam_id])
         print(f"Scene {mes.t} {scene.is_full()}")
         print('\n'.join(f"{i}: {x is not None}" for i, x in scene))
 
+        # todo ДЕТЕКТИТЬ ПО ДВУМ КАМЕРАМ ЕСЛИ ТРЕТЬЕЙ НЕТ это надо сделать сейчас и отлаживать конкретно на этом примере окда?
+        # Глянь тут на камерах 1 и 3 где-то справа сверху шар норм трекается
         if scene.is_full():
+            counter = 0
             for _, point in scene:
                 if point is 0:
-                    print("Triangulator: CoordinatesTriangulatedMessage with none has sent")
-                    msg = CoordinatesTriangulatedMessage(
-                        None,
-                        None,
-                        None,
-                        mes.t,
-                        None
-                    )
-                    self.on_triangulated(msg)
-                    return
+                    counter += 1
 
-            B = []
-            for id, cam in self._cams.items():
-                print(scene[id])
-                print(self._cams[id].focal_length)
-                b = np.asarray(
-                    [
-                        self._cams[id].focal_length,
-                        scene[id][0],
-                        scene[id][1],
-                    ]
+            if counter >= 2:
+                print("Triangulator: CoordinatesTriangulatedMessage with none was sent")
+                msg = CoordinatesTriangulatedMessage(
+                    None,
+                    None,
+                    None,
+                    mes.t,
+                    None
                 )
-                b = b / np.linalg.norm(b)
-                b = -b.dot(self.cams[id].R)
+                self.on_triangulated(msg)
+                return
 
-                B.append(b)
+            if counter == 1:
+                point_4d = cv2.triangulatePoints(self.cams[1].P, self.cams[3].P, scene[1], scene[3])
 
-            B = np.asarray(B)
-            print(self.A, B)
-            midpoint = midpoint_triangulate(self.A, B)
+            print("Triangulator: start computing")
+            print("Triangulator: ", self.cams[1].P, self.cams[3].P, scene[1], scene[3], sep='\n')
+
+            point_4d = cv2.triangulatePoints(self.cams[1].P, self.cams[3].P, scene[1], scene[3])
+
+            point_3d = point_4d[:3] / point_4d[3]
+            print(f"t: {mes.t} {point_3d = }")
 
             msg = CoordinatesTriangulatedMessage(
-                float(midpoint[0]),
-                float(midpoint[1]),
-                float(midpoint[2]),
+                float(point_3d[0]),
+                float(point_3d[1]),
+                float(point_3d[2]),
                 mes.t,
                 0 # TODO
             )
-            print("on_triangulated ", midpoint)
             self.on_triangulated(msg)
             

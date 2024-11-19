@@ -7,7 +7,7 @@ class Camera:
     x: float
     y: float
     z: float
-    a: float
+    azimut: float
     matrix_w: float
     matrix_h: float
     res_w: int
