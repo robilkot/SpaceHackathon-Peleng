@@ -20,17 +20,6 @@ class MatCamera:
 
 
 def midpoint_triangulate(A, B):
-    """
-    Args:
-        x:   Set of 2D points in homogeneous coords, (3 x n) matrix
-        cam: Collection of n objects, each containing member variables
-                 cam.P - 3x4 camera matrix
-                 cam.R - 3x3 rotation matrix
-                 cam.T - 3x1 translation matrix
-    Returns:
-        midpoint: 3D point in homogeneous coords, (4 x 1) matrix
-    """
-
     n = 3                                         # No. of cameras
 
     I = np.eye(3)
@@ -38,14 +27,11 @@ def midpoint_triangulate(A, B):
 
     for i in range(n):
         a = A[:,i,None]
-        print(a)
-
         b = B[:,i,None]
-        print(b)
 
-        sigma2 = sigma2 + b.dot(b.T.dot(a))
+        sigma2 = sigma2 + b.dot(b.transpose().dot(a))
 
-    C = (n * I) - B.dot(B.T)
+    C = (n * I) - B.dot(B.transpose())
     Cinv = npla.inv(C)
     sigma1 = np.sum(A, axis=1)[:,None]
     m1 = I + B.dot(np.transpose(B).dot(Cinv))
@@ -122,8 +108,8 @@ class Triangulator:
             print(mes.x + mes.w / 2, cam.resolution[0], cam.width)
             scene[mes.cam_id] = np.asarray(
                 (
-                    ((mes.x + mes.w / 2) / cam.resolution[0] - 0.5) * cam.width,
-                    ((mes.y + mes.h / 2) / cam.resolution[1] - 0.5) * cam.height
+                    (mes.x + mes.w / 2) / cam.resolution[0] - 0.5,
+                    0.5 - (mes.y + mes.h / 2) / cam.resolution[1]
                 )
             )
         self.scenes[mes.t] = scene
@@ -152,13 +138,13 @@ class Triangulator:
                 print(self._cams[id].focal_length)
                 b = np.asarray(
                     [
+                        self._cams[id].focal_length,
                         scene[id][0],
                         scene[id][1],
-                        self._cams[id].focal_length
                     ]
                 )
-                b = b.dot(self.cams[id].R)
                 b = b / np.linalg.norm(b)
+                b = -b.dot(self.cams[id].R)
 
                 B.append(b)
 
