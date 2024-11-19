@@ -116,7 +116,7 @@ class BBoxTracker:
 
             # Time to send event
             frame += 1
-            if frame % 30 == 0:
+            if frame % CALL_PREDICTOR == 0:
                 last_frame_ticks = current_frame_ticks
 
                 timestamp = (tracking_frame_number - 1) * TIMESTEP
@@ -165,8 +165,8 @@ class BBoxTracker:
 
                     # todo Леша это очищает данные для предиктора
                     # this erases old data (3 frames left)
-                    info = {key: value for key, value in zip(info.keys(), info.values()) if value.t > timestamp - 3 * TIMESTEP}
-                    # print(f"purged, {len(info)} left")
+                    info = {key: value for key, value in zip(info.keys(), info.values()) if value.t > timestamp - LEFTED_FRAMES * TIMESTEP}
+                    print(f"purged, {len(info)} left")
 
                     if DEBUG_TRACKER:
                         print(f'cam_id:{cam_id} t:{timestamp} ok')
