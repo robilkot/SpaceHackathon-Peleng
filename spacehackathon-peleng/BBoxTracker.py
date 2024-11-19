@@ -70,6 +70,7 @@ class BBoxTracker:
 
         info: dict[float, ObjectState] = {}
 
+        lost_track: bool = False
         last_frame_ticks = cv2.getTickCount()
         tracking_frame_number = 1  # Increments each TIMESTEP
         while cap_rgb.isOpened() and cap_ir.isOpened():
@@ -111,10 +112,19 @@ class BBoxTracker:
                 timestamp = (tracking_frame_number - 1) * TIMESTEP
                 tracking_frame_number += 1
 
-                intersecting_boxes = rgb_bboxes # self.__find_intersecting_boxes(rgb_bboxes, ir_bboxes)
-
                 try:
-                    bbox = next(x for x in intersecting_boxes) # if x in ir_bboxes)
+                    if len(rgb_bboxes) == 1 and len(ir_bboxes) == 0:
+                        bbox = rgb_bboxes[0]
+                    elif len(rgb_bboxes) == 0 and len(ir_bboxes) == 1:
+                        bbox = ir_bboxes[0]
+                    else:
+                        # TODO надо чекать находится ли новый ббокс в окрестности предыдущего а не сравнивать чисто текущие кадры
+                        bbox = next(x for x in self.__find_intersecting_boxes(rgb_bboxes, ir_bboxes)) # if x in ir_bboxes)
+
+                    # clear predictions, we now have real data
+                    if lost_track:
+                        info = {}
+                        lost_track = False
 
                     # get current centers
                     _x = (2 * bbox[0] + bbox[2]) / 2
@@ -124,13 +134,22 @@ class BBoxTracker:
 
                     # print(f"actual: {_x, _y} predict: {x_pred, y_pred}")
 
-                    # if x_pred is not None and y_pred is not None:
-                    #     thresh = 100
-                    #     dist = math.sqrt((y_pred - _y) ** 2 + (x_pred - _x) ** 2)
-                    #     print(f"dist {dist}")
-                    #     x_res, y_res = (_x, _y) if dist < thresh else (x_pred, y_pred)
-                    # else:
-                    x_res, y_res = _x, _y
+                    if x_pred is not None and y_pred is not None:
+                        thresh = 100
+                        dist = math.sqrt((y_pred - _y) ** 2 + (x_pred - _x) ** 2)
+                        # print(f"dist {dist}")
+                        if dist < thresh:
+                            if DEBUG_TRACKER:
+                                print(f"cam_id:{cam_id} real")
+                            x_res, y_res = _x, _y
+                        else:
+                            if DEBUG_TRACKER:
+                                print(f"cam_id:{cam_id} prediction")
+                            x_res, y_res = x_pred, y_pred
+                    else:
+                        if DEBUG_TRACKER:
+                            print(f"cam_id:{cam_id} real")
+                        x_res, y_res = _x, _y
 
                     state = ObjectState(x_res, y_res, 0, timestamp, None, None, None, None)
                     info[timestamp] = state
@@ -147,6 +166,10 @@ class BBoxTracker:
                         exit2(e)
 
                 except StopIteration:
+                    lost_track = True
+
+                    if DEBUG_TRACKER:
+                        print(f"cam_id:{cam_id} prediction")
                     x_pred, y_pred = predict_location(timestamp, info)
                     info[timestamp] = ObjectState(x_pred, y_pred, 0, timestamp, None, None, None, None)
 

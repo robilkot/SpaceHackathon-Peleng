@@ -5,7 +5,7 @@ from Constants import *
 
 
 def predict_location(timestamp: float, info: dict[float, ObjectState]) -> tuple[float | None, float | None]:
-    pr1 = info.get(timestamp - TIMESTEP, None)
+    pr1 = info.get(timestamp - TIMESTEP * 2, None)
 
     if pr1 is None or pr1.vel is None:
         return None, None
@@ -14,7 +14,7 @@ def predict_location(timestamp: float, info: dict[float, ObjectState]) -> tuple[
 
 
 def complete_object_state(cur: ObjectState, info: dict[float, ObjectState]):
-    pr1 = info.get(cur.t - TIMESTEP, None)
+    pr1 = info.get(cur.t - TIMESTEP * 2, None)
     # print(f"cur: {cur}")
 
     if pr1 is None or pr1.x is None or cur.x is None:
