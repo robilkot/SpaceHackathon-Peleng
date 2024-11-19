@@ -79,6 +79,7 @@ class BBoxTracker:
         cap_rgb.set(cv2.CAP_PROP_POS_FRAMES, START_FRAME)
         cap_ir.set(cv2.CAP_PROP_POS_FRAMES, START_FRAME)
 
+        circle_positions = []
         frame = START_FRAME
         while cap_rgb.isOpened() and cap_ir.isOpened():
             rgb_bboxes = []
@@ -114,7 +115,7 @@ class BBoxTracker:
 
             # Time to send event
             frame += 1
-            if frame % CALL_PREDICTOR == 0:
+            if frame % FRAME_RATE == 0:
                 last_frame_ticks = current_frame_ticks
 
                 timestamp = (tracking_frame_number - 1) * TIMESTEP
@@ -199,8 +200,12 @@ class BBoxTracker:
 
             for t in track:
                 try:
-                    cv2.circle(display1, (int(t[0]), int(t[1])), radius=5, color=(0, 0, 255), thickness=2)
-                    cv2.circle(display2, (int(t[0]), int(t[1])), radius=5, color=(0, 0, 255), thickness=2)
+                    if frame % 5 == 0:
+                        circle_positions.append((int(t[0]), int(t[1])))
+
+                    for (x, y) in circle_positions:
+                        cv2.circle(display1, (x, y), radius=5, color=(0, 0, 255), thickness=2)
+                        cv2.circle(display2, (x, y), radius=5, color=(0, 0, 255), thickness=2)
                 except:
                     # Хз что случилось но бывает
                     pass
