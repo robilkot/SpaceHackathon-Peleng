@@ -19,37 +19,7 @@ class MatCamera:
     resolution: tuple[int, int]
 
 
-# def midpoint_triangulate(cameras: dict[int, MatCamera], points: dict[int, np.ndarray]):
-#     n = len(cameras)                                         # No. of cameras
-#
-#     I = np.eye(3)                                        # 3x3 identity matrix
-#     A = np.zeros((3,n))
-#     B = np.zeros((3,n))
-#     sigma2 = np.zeros((3,1))
-#
-#     for i, camera in cameras.items():
-#         a = -np.transpose(camera.R).dot(camera.T)        # ith camera position
-#         A[:,i - 1,None] = a.reshape((-1, 1))
-#
-#         b = npla.pinv(camera.P).dot(points[i])          # Directional vector
-#         b = b / b[3]
-#         b = b[:3,None] - a
-#         b = b / npla.norm(b)
-#         B[:,i - 1,None] = b
-#
-#         sigma2 = sigma2 + b.dot(b.T.dot(a))
-#
-#     C = (n * I) - B.dot(B.T)
-#     Cinv = npla.inv(C)
-#     sigma1 = np.sum(A, axis=1)[:,None]
-#     m1 = I + B.dot(np.transpose(B).dot(Cinv))
-#     m2 = Cinv.dot(sigma2)
-#
-#     midpoint = (1/n) * m1.dot(sigma1) - m2
-#     return midpoint
-
-
-def midpoint_triangulate(x, cam):
+def midpoint_triangulate(A, B):
     """
     Args:
         x:   Set of 2D points in homogeneous coords, (3 x n) matrix
@@ -61,26 +31,17 @@ def midpoint_triangulate(x, cam):
         midpoint: 3D point in homogeneous coords, (4 x 1) matrix
     """
 
-    n = len(cam)                                         # No. of cameras
+    n = 3                                         # No. of cameras
 
-    I = np.eye(3)                                        # 3x3 identity matrix
-    A = np.zeros((3,n))
-    B = np.zeros((3,n))
+    I = np.eye(3)
     sigma2 = np.zeros((3,1))
 
     for i in range(n):
-        a = -np.transpose(cam[i].R).dot(cam[i].T).reshape((-1, 1))        # ith camera position
-        A[:,i,None] = a
+        a = A[:,i,None]
+        print(a)
 
-        b = npla.pinv(cam[i].P).dot(x[:,i])              # Directional vector
+        b = B[:,i,None]
         print(b)
-        b = b / b[3]
-        print(b)
-        b = b[:3,None] - a
-        print(b)
-        b = b / npla.norm(b)
-        print(b)
-        B[:,i,None] = b
 
         sigma2 = sigma2 + b.dot(b.T.dot(a))
 
@@ -91,7 +52,7 @@ def midpoint_triangulate(x, cam):
     m2 = Cinv.dot(sigma2)
 
     midpoint = (1/n) * m1.dot(sigma1) - m2
-    return np.vstack((midpoint, 1))
+    return midpoint
 
 
 class Scene:
@@ -123,8 +84,10 @@ class Triangulator:
                  cams: dict[int, Camera],
                  on_triangulated: Callable[[CoordinatesTriangulatedMessage], None]
     ) -> None:
+
+        self.A = np.asarray([[x.x, x.y, x.z] for x in cams.values()])
         self.cams: dict[int, MatCamera] = dict.fromkeys(cams.keys())
-        
+        self._cams = cams
         for id, cam in cams.items():
             R = np.asarray(
                 [
@@ -132,11 +95,20 @@ class Triangulator:
                     [np.sin(cam.a), np.cos(cam.a), 0],
                     [0, 0, 1],
                 ]
+            ).transpose()
+            T = np.asarray([cam.x, cam.y, cam.z]).reshape((-1, 1))
+            T = -R.dot(T)
+            # P = np.hstack((R, T.reshape((-1, 1))))
+            K = np.asarray(
+                [
+                    [cam.focal_length, 0, cam.matrix_w / 2  ],
+                    [0, cam.focal_length, cam.matrix_h / 2],
+                    [0, 0, 1]
+                ]
             )
-            T = np.asarray([cam.x, cam.y, cam.z])
-            P = np.hstack((R, T.reshape((-1, 1))))
+            P = K.dot(np.hstack((R, T.reshape((-1, 1)))))
             self.cams[id] = MatCamera(P, R, T, cam.matrix_w, cam.matrix_h, (cam.res_w, cam.res_h))
-        
+
         self.on_triangulated = on_triangulated
         self.scenes = {}
     
@@ -147,15 +119,16 @@ class Triangulator:
             scene[mes.cam_id] = 0
             print("Triangulator: ObjNotDetectedMessage instance has received")
         else:
+            print(mes.x + mes.w / 2, cam.resolution[0], cam.width)
             scene[mes.cam_id] = np.asarray(
                 (
-                    (mes.x - mes.w / 2) / cam.resolution[0] * cam.width,
-                    -(mes.y - mes.h / 2) / cam.resolution[1] * cam.height
+                    ((mes.x + mes.w / 2) / cam.resolution[0] - 0.5) * cam.width,
+                    ((mes.y + mes.h / 2) / cam.resolution[1] - 0.5) * cam.height
                 )
             )
         self.scenes[mes.t] = scene
 
-        print(f"Triangulator: DetectionMessage instance has received. {mes.cam_id = }: ", scene[mes.cam_id], hash(scene))
+        print(f"Triangulator: DetectionMessage instance has received. {mes.cam_id = }: ", scene[mes.cam_id])
         print(f"Scene {mes.t} {scene.is_full()}")
         print('\n'.join(f"{i}: {x is not None}" for i, x in scene))
 
@@ -173,10 +146,26 @@ class Triangulator:
                     self.on_triangulated(msg)
                     return
 
-            ids = [x for x in self.cams]
-            points = np.asarray([[*scene[x], 1] for x in ids])
-            cams = np.asarray([self.cams[x] for x in ids])
-            midpoint = midpoint_triangulate(points, cams)
+            B = []
+            for id, cam in self._cams.items():
+                print(scene[id])
+                print(self._cams[id].focal_length)
+                b = np.asarray(
+                    [
+                        scene[id][0],
+                        scene[id][1],
+                        self._cams[id].focal_length
+                    ]
+                )
+                b = b.dot(self.cams[id].R)
+                b = b / np.linalg.norm(b)
+
+                B.append(b)
+
+            B = np.asarray(B)
+            print(self.A, B)
+            midpoint = midpoint_triangulate(self.A, B)
+
             msg = CoordinatesTriangulatedMessage(
                 float(midpoint[0]),
                 float(midpoint[1]),
