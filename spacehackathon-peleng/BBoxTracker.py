@@ -1,15 +1,16 @@
 import threading
 
 import cv2
-from typing import Callable
 from Models.DetectionMessage import *
-from Constants import *
+from Coordinator import *
 
 
 class BBoxTracker:
     def __init__(self, on_tracked: Callable[[DetectionMessage], None]) -> None:
         self.on_tracked = on_tracked
         self.__exiting: bool = False
+        self.info: dict[float, ObjectState] = {}
+        self.bboxes: dict[float, ...] = {}
 
     def __read_downscaled(self, cap):
         ret, frame = cap.read()
@@ -20,7 +21,7 @@ class BBoxTracker:
 
         # Get the current frame size
         height, width, _ = frame.shape
-        scale_percent = 25
+        scale_percent = 50
         new_width = int(width * scale_percent / 100)
         new_height = int(height * scale_percent / 100)
         dim = (new_width, new_height)
@@ -30,7 +31,7 @@ class BBoxTracker:
         rgb_diff = cv2.absdiff(f1_rgb, f2_rgb)
         rgb_gray = cv2.cvtColor(rgb_diff, cv2.COLOR_BGR2GRAY)
         _, rgb_thresh = cv2.threshold(rgb_gray, 45, 255, cv2.THRESH_BINARY)
-        rgb_dilated = cv2.dilate(rgb_thresh, None, iterations=6)
+        rgb_dilated = cv2.dilate(rgb_thresh, None, iterations=4)
         rgb_contours, _ = cv2.findContours(rgb_dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         return rgb_contours
 
@@ -68,6 +69,7 @@ class BBoxTracker:
         rgb_bboxes = []
         ir_bboxes = []
 
+        last_frame_bbox = None
         last_frame_ticks = cv2.getTickCount()
         tracking_frame_number = 1  # Increments each TIMESTEP
         while cap_rgb.isOpened() and cap_ir.isOpened():
@@ -106,21 +108,58 @@ class BBoxTracker:
 
                 timestamp = (tracking_frame_number - 1) * TIMESTEP
                 tracking_frame_number += 1
-                intersecting_boxes = self.__find_intersecting_boxes(rgb_bboxes, ir_bboxes)
+
+                if (len(rgb_bboxes) == 1 and len(ir_bboxes) == 0):
+                    intersecting_boxes = [rgb_bboxes[0]]
+                elif (len(rgb_bboxes) == 0 and len(ir_bboxes) == 1):
+                    intersecting_boxes = [ir_bboxes[0]]
+                else:
+                    intersecting_boxes = self.__find_intersecting_boxes(rgb_bboxes, ir_bboxes)
 
                 try:
                     bbox = next(x for x in intersecting_boxes if x in ir_bboxes)
-                    msg = ObjDetectedMessage(cam_id, timestamp, bbox[0], bbox[1], bbox[2], bbox[3])
+
+                    state = ObjectState((2*bbox[0] + bbox[2]) / 2,
+                                        (2*bbox[1] + bbox[3]) / 2,
+                                        0,
+                                        timestamp,
+                                        None,
+                                        [0,0,0],
+                                        [0,0,0],
+                                        [0,0,0])
+                    self.info[timestamp] = state
+                    self.bboxes[timestamp] = bbox
+
+                    complete_object_state(state, self.info)
+
+                    # todo: check if valid, else predict
+
+                    def tracked(s: ObjectState):
+                        _bbox = self.bboxes[s.t]
+
+                        if DEBUG_TRACKER:
+                            print(f'cam_id:{cam_id} t:{timestamp} ok')
+                        try:
+                            self.on_tracked(ObjDetectedMessage(cam_id, timestamp, bbox[0], bbox[1], bbox[2], bbox[3]))
+                        except Exception as e:
+                            exit2(e)
+
+                    for obj in self.info.values():
+                        raise_if_completed(obj, tracked)
+
+                    last_frame_bbox = bbox
+
                 except StopIteration:
+                    if DEBUG_TRACKER:
+                        print(f'cam_id:{cam_id} t:{timestamp} FAIL')
+
                     msg = ObjNotDetectedMessage(cam_id, timestamp)
+                    try:
+                        self.on_tracked(msg)
+                    except Exception as e:
+                        exit2(e)
 
-                if DEBUG_TRACKER:
-                    print(f'cam_id:{cam_id} t:{timestamp} detect {"FAIL" if msg is ObjNotDetectedMessage else ""}')
 
-                try:
-                    self.on_tracked(msg)
-                except Exception as e:
-                    exit2(e)
 
             cv2.imshow(f"RGB{cam_id}", display1)
             cv2.imshow(f"IR{cam_id}", display2)

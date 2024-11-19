@@ -14,6 +14,7 @@ coordinator = Coordinator(lambda msg: None)
 
 triangulator = Triangulator(cameras, coordinator.accept)
 
-tracker = BBoxTracker(triangulator.transform)
+tracker = BBoxTracker(lambda msg: None)
+# tracker = BBoxTracker(triangulator.transform)
 
 tracker.start()
