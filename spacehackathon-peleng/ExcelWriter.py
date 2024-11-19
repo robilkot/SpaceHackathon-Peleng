@@ -1,3 +1,5 @@
+import threading
+
 import openpyxl
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
@@ -9,13 +11,14 @@ from Constants import *
 
 class ExcelWriter:
     def __init__(self, filepath: str):
+        self.lock = threading.Lock()
         self.path = filepath
         self.workbook: Workbook = openpyxl.load_workbook(self.path)
         self.sheet: Worksheet = self.workbook.active
 
     def write(self, msg: ObjectState):
         row = int(msg.t / 0.5 + 2)
-        column_offset = 18 # todo: shifts output to another column for debug
+        column_offset = 18  # todo: shifts output to another column for debug
 
         self.sheet.cell(row=row, column=1+column_offset).value = msg.t
         self.sheet.cell(row=row, column=2+column_offset).value = msg.x
@@ -25,7 +28,9 @@ class ExcelWriter:
         if DEBUG_WRITER:
             print(f'write t:{msg.t} x:{msg.x} y:{msg.y} z:{msg.z}')
 
+        self.lock.acquire()
         self.workbook.save(self.path)
+        self.lock.release()
 
     def read_params(self) -> dict[int, Camera]:
         col = 8

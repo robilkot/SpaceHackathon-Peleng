@@ -73,6 +73,7 @@ class BBoxTracker:
         lost_track: bool = False
         last_frame_ticks = cv2.getTickCount()
         tracking_frame_number = 1  # Increments each TIMESTEP
+        track = []
         while cap_rgb.isOpened() and cap_ir.isOpened():
             rgb_bboxes = []
             ir_bboxes = []
@@ -182,8 +183,18 @@ class BBoxTracker:
                     except Exception as e:
                         exit2(e)
                 finally:
+                    # Debug
+                    last_center = info[timestamp]
+                    x = last_center.x if last_center.x is not None else 0
+                    y = last_center.y if last_center.y is not None else 0
+                    track.append((x, y))
+
                     for o in info.values():
                         complete_object_state(o, info)
+
+            for t in track:
+                cv2.circle(display1, (int(t[0]), int(t[1])), radius=5, color=(0, 0, 255), thickness=2)
+                cv2.circle(display2, (int(t[0]), int(t[1])), radius=5, color=(0, 0, 255), thickness=2)
 
             cv2.imshow(f"RGB{cam_id}", display1)
             cv2.imshow(f"IR{cam_id}", display2)
