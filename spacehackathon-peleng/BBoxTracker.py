@@ -65,6 +65,9 @@ class BBoxTracker:
                 cv2.destroyWindow(f"RGB{cam_id}")
                 cv2.destroyWindow(f"IR{cam_id}")
 
+            if error is not None:
+                raise error
+
         cap_rgb = cv2.VideoCapture(rgb_path)
         cap_ir = cv2.VideoCapture(ir_path)
 
@@ -212,8 +215,9 @@ class BBoxTracker:
                     # Хз что случилось но бывает
                     pass
 
-            cv2.imshow(f"RGB{cam_id}", display1)
-            cv2.imshow(f"IR{cam_id}", display2)
+            if SHOW_TRACKER:
+                cv2.imshow(f"RGB{cam_id}", display1)
+                cv2.imshow(f"IR{cam_id}", display2)
 
             # cv2.waitKey(0)  # For stepping through each frame
             if self.__exiting or cv2.waitKey(25) & 0xFF == ord('q'):

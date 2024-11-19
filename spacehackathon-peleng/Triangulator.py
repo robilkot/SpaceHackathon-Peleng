@@ -91,8 +91,7 @@ class Triangulator:
             ).transpose()
             T = np.asarray([cam.x, cam.y, cam.z]).reshape((-1, 1))
             T = -R.dot(T)
-            # P = np.hstack((R, T.reshape((-1, 1))))
-            P = K.dot(np.hstack((R, T.reshape((-1, 1)))))
+            P = K.dot(np.hstack((R, T)))
             self.cams[id] = MatCamera(P, R, T, cam.matrix_w, cam.matrix_h, (cam.res_w, cam.res_h))
 
         self.on_triangulated = on_triangulated
@@ -136,7 +135,10 @@ class Triangulator:
 
             print("Triangulator: start computing")
             print("Triangulator: ", self.cams[1].P, self.cams[2].P, scene[1], scene[2], sep='\n')
-            midpoint = cv2.triangulatePoints(self.cams[1].P, self.cams[2].P, scene[1], scene[2])
+            midpoint1 = cv2.triangulatePoints(self.cams[1].P, self.cams[2].P, scene[1], scene[2])
+            midpoint2 = cv2.triangulatePoints(self.cams[1].P, self.cams[3].P, scene[1], scene[3])
+            midpoint3 = cv2.triangulatePoints(self.cams[2].P, self.cams[3].P, scene[2], scene[3])
+            midpoint = (midpoint1 + midpoint2 + midpoint3)/3
             print(f"Triangulator: {midpoint = }")
 
             msg = CoordinatesTriangulatedMessage(

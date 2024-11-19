@@ -18,7 +18,7 @@ class ExcelWriter:
 
     def write(self, msg: ObjectState):
         row = int(msg.t / 0.5 + 2)
-        column_offset = 0  # todo: shifts output to another column for debug
+        column_offset = 30  # todo: shifts output to another column for debug
 
         # self.sheet_out.cell(row=row, column=1+column_offset).value = msg.t
         self.sheet.cell(row=row, column=2+column_offset).value = msg.x
