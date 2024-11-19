@@ -1,3 +1,4 @@
+import math
 import threading
 
 import cv2
@@ -9,8 +10,6 @@ class BBoxTracker:
     def __init__(self, on_tracked: Callable[[DetectionMessage], None]) -> None:
         self.on_tracked = on_tracked
         self.__exiting: bool = False
-        self.info: dict[float, ObjectState] = {}
-        self.bboxes: dict[float, ...] = {}
 
     def __read_downscaled(self, cap):
         ret, frame = cap.read()
@@ -59,6 +58,9 @@ class BBoxTracker:
                 if error is not None:
                     print(error)
             self.__exiting = True
+            cap_rgb.release()
+            cv2.destroyWindow(f"RGB{cam_id}")
+            cv2.destroyWindow(f"IR{cam_id}")
 
         cap_rgb = cv2.VideoCapture(rgb_path)
         cap_ir = cv2.VideoCapture(ir_path)
@@ -66,13 +68,13 @@ class BBoxTracker:
         f1_rgb = self.__read_downscaled(cap_rgb)
         f1_ir = self.__read_downscaled(cap_ir)
 
-        rgb_bboxes = []
-        ir_bboxes = []
+        info: dict[float, ObjectState] = {}
 
-        last_frame_bbox = None
         last_frame_ticks = cv2.getTickCount()
         tracking_frame_number = 1  # Increments each TIMESTEP
         while cap_rgb.isOpened() and cap_ir.isOpened():
+            rgb_bboxes = []
+            ir_bboxes = []
 
             f2_rgb = self.__read_downscaled(cap_rgb)
             f2_ir = self.__read_downscaled(cap_ir)
@@ -109,47 +111,45 @@ class BBoxTracker:
                 timestamp = (tracking_frame_number - 1) * TIMESTEP
                 tracking_frame_number += 1
 
-                if (len(rgb_bboxes) == 1 and len(ir_bboxes) == 0):
-                    intersecting_boxes = [rgb_bboxes[0]]
-                elif (len(rgb_bboxes) == 0 and len(ir_bboxes) == 1):
-                    intersecting_boxes = [ir_bboxes[0]]
-                else:
-                    intersecting_boxes = self.__find_intersecting_boxes(rgb_bboxes, ir_bboxes)
+                intersecting_boxes = rgb_bboxes # self.__find_intersecting_boxes(rgb_bboxes, ir_bboxes)
 
                 try:
-                    bbox = next(x for x in intersecting_boxes if x in ir_bboxes)
+                    bbox = next(x for x in intersecting_boxes) # if x in ir_bboxes)
 
-                    state = ObjectState((2*bbox[0] + bbox[2]) / 2,
-                                        (2*bbox[1] + bbox[3]) / 2,
-                                        0,
-                                        timestamp,
-                                        None,
-                                        [0,0,0],
-                                        [0,0,0],
-                                        [0,0,0])
-                    self.info[timestamp] = state
-                    self.bboxes[timestamp] = bbox
+                    # get current centers
+                    _x = (2 * bbox[0] + bbox[2]) / 2
+                    _y = (2 * bbox[1] + bbox[3]) / 2
 
-                    complete_object_state(state, self.info)
+                    x_pred, y_pred = predict_location(timestamp, info)
 
-                    # todo: check if valid, else predict
+                    # print(f"actual: {_x, _y} predict: {x_pred, y_pred}")
 
-                    def tracked(s: ObjectState):
-                        _bbox = self.bboxes[s.t]
+                    # if x_pred is not None and y_pred is not None:
+                    #     thresh = 100
+                    #     dist = math.sqrt((y_pred - _y) ** 2 + (x_pred - _x) ** 2)
+                    #     print(f"dist {dist}")
+                    #     x_res, y_res = (_x, _y) if dist < thresh else (x_pred, y_pred)
+                    # else:
+                    x_res, y_res = _x, _y
 
-                        if DEBUG_TRACKER:
-                            print(f'cam_id:{cam_id} t:{timestamp} ok')
-                        try:
-                            self.on_tracked(ObjDetectedMessage(cam_id, timestamp, bbox[0], bbox[1], bbox[2], bbox[3]))
-                        except Exception as e:
-                            exit2(e)
+                    state = ObjectState(x_res, y_res, 0, timestamp, None, None, None, None)
+                    info[timestamp] = state
 
-                    for obj in self.info.values():
-                        raise_if_completed(obj, tracked)
+                    # this erases old data (3 frames left)
+                    info = {key: value for key, value in zip(info.keys(), info.values()) if value.t > timestamp - 3 * TIMESTEP}
+                    # print(f"purged, {len(info)} left")
 
-                    last_frame_bbox = bbox
+                    if DEBUG_TRACKER:
+                        print(f'cam_id:{cam_id} t:{timestamp} ok')
+                    try:
+                        self.on_tracked(ObjDetectedMessage(cam_id, timestamp, bbox[0], bbox[1], bbox[2], bbox[3]))
+                    except Exception as e:
+                        exit2(e)
 
                 except StopIteration:
+                    x_pred, y_pred = predict_location(timestamp, info)
+                    info[timestamp] = ObjectState(x_pred, y_pred, 0, timestamp, None, None, None, None)
+
                     if DEBUG_TRACKER:
                         print(f'cam_id:{cam_id} t:{timestamp} FAIL')
 
@@ -158,8 +158,9 @@ class BBoxTracker:
                         self.on_tracked(msg)
                     except Exception as e:
                         exit2(e)
-
-
+                finally:
+                    for o in info.values():
+                        complete_object_state(o, info)
 
             cv2.imshow(f"RGB{cam_id}", display1)
             cv2.imshow(f"IR{cam_id}", display2)
@@ -167,11 +168,7 @@ class BBoxTracker:
             # cv2.waitKey(0)  # For stepping through each frame
             if self.__exiting or cv2.waitKey(25) & 0xFF == ord('q'):
                 exit2()
-                break
 
-        cap_rgb.release()
-        cv2.destroyWindow(f"RGB{cam_id}")
-        cv2.destroyWindow(f"IR{cam_id}")
 
     def start(self):
         for i in range(CAMERAS_COUNT):

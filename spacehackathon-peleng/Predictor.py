@@ -4,43 +4,35 @@ from Models.ObjectState import *
 from Constants import *
 
 
-def complete_object_state(current: ObjectState, info: dict[float, ObjectState]):
-    prev = info.get(current.t - TIMESTEP, None)
-    prev2 = info.get(current.t - TIMESTEP * 2, None)
+def predict_location(timestamp: float, info: dict[float, ObjectState]) -> tuple[float | None, float | None]:
+    pr1 = info.get(timestamp - TIMESTEP, None)
 
-    if prev is not None and prev2 is not None:
-        prev.vel = [(prev.x - prev2.x) / TIMESTEP,
-                    (prev.y - prev2.y) / TIMESTEP,
-                    (prev.z - prev2.z) / TIMESTEP]
+    if pr1 is None or pr1.vel is None:
+        return None, None
 
-        if prev.vel is not None and prev2.vel is not None:
-            prev.acc = [(prev.vel[0] - prev2.vel[0]) / TIMESTEP,
-                        (prev.vel[1] - prev2.vel[1]) / TIMESTEP,
-                        (prev.vel[2] - prev2.vel[2]) / TIMESTEP]
+    return pr1.x + pr1.vel[0], pr1.y + pr1.vel[1]
 
-        if prev.acc is not None and prev2.acc is not None:
-            prev.jerk = [(prev.acc[0] - prev2.acc[0]) / TIMESTEP,
-                         (prev.acc[1] - prev2.acc[1]) / TIMESTEP,
-                         (prev.acc[2] - prev2.acc[2]) / TIMESTEP]
 
-    if prev is not None:
-        if prev.acc is not None and prev.jerk is not None:
-            # Update current acceleration with given jerk
-            current.acc[0] = prev.acc[0] + prev.jerk[0]
-            current.acc[1] = prev.acc[1] + prev.jerk[1]
-            current.acc[2] = prev.acc[2] + prev.jerk[2]
+def complete_object_state(cur: ObjectState, info: dict[float, ObjectState]):
+    pr1 = info.get(cur.t - TIMESTEP, None)
+    # print(f"cur: {cur}")
 
-        if prev.vel is not None and prev.acc is not None:
-            # Update current velocity with given acceleration
-            current.vel[0] = prev.vel[0] + prev.acc[0]
-            current.vel[1] = prev.vel[1] + prev.acc[1]
-            current.vel[2] = prev.vel[2] + prev.acc[2]
+    if pr1 is None or pr1.x is None or cur.x is None:
+        return
 
-        if prev.vel is not None:
-            # Update current coords with given velocity
-            current.x = prev.x + current.vel[0]
-            current.y = prev.y + current.vel[1]
-            current.z = prev.z + current.vel[2]
+    cur.vel = [(cur.x - pr1.x) / TIMESTEP,
+               (cur.y - pr1.y) / TIMESTEP,
+               (cur.z - pr1.z) / TIMESTEP]
+
+    if cur.vel is not None and pr1.vel is not None:
+        cur.acc = [(cur.vel[0] - pr1.vel[0]) / TIMESTEP,
+                   (cur.vel[1] - pr1.vel[1]) / TIMESTEP,
+                   (cur.vel[2] - pr1.vel[2]) / TIMESTEP]
+
+    if cur.acc is not None and pr1.acc is not None:
+        cur.jrk = [(cur.acc[0] - pr1.acc[0]) / TIMESTEP,
+                   (cur.acc[1] - pr1.acc[1]) / TIMESTEP,
+                   (cur.acc[2] - pr1.acc[2]) / TIMESTEP]
 
 
 def raise_if_completed(s: ObjectState, callback: Callable[[ObjectState], None]):
