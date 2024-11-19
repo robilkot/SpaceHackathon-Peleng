@@ -18,12 +18,13 @@ class ExcelWriter:
 
     def write(self, msg: ObjectState):
         row = int(msg.t / 0.5 + 2)
-        column_offset = 18  # todo: shifts output to another column for debug
+        column_offset = 0  # todo: shifts output to another column for debug
 
-        self.sheet.cell(row=row, column=1+column_offset).value = msg.t
+        # self.sheet_out.cell(row=row, column=1+column_offset).value = msg.t
         self.sheet.cell(row=row, column=2+column_offset).value = msg.x
         self.sheet.cell(row=row, column=3+column_offset).value = msg.y
         self.sheet.cell(row=row, column=4+column_offset).value = msg.z
+        self.sheet.cell(row=row, column=5+column_offset).value = msg.dl_max
 
         if DEBUG_WRITER:
             print(f'write t:{msg.t} x:{msg.x} y:{msg.y} z:{msg.z}')

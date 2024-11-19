@@ -20,7 +20,7 @@ class BBoxTracker:
 
         # Get the current frame size
         height, width, _ = frame.shape
-        scale_percent = 50
+        scale_percent = 100
         new_width = int(width * scale_percent / 100)
         new_height = int(height * scale_percent / 100)
         dim = (new_width, new_height)
@@ -30,7 +30,7 @@ class BBoxTracker:
         rgb_diff = cv2.absdiff(f1_rgb, f2_rgb)
         rgb_gray = cv2.cvtColor(rgb_diff, cv2.COLOR_BGR2GRAY)
         _, rgb_thresh = cv2.threshold(rgb_gray, 45, 255, cv2.THRESH_BINARY)
-        rgb_dilated = cv2.dilate(rgb_thresh, None, iterations=4)
+        rgb_dilated = cv2.dilate(rgb_thresh, None, iterations=7)
         rgb_contours, _ = cv2.findContours(rgb_dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         return rgb_contours
 
@@ -74,6 +74,10 @@ class BBoxTracker:
         last_frame_ticks = cv2.getTickCount()
         tracking_frame_number = 1  # Increments each TIMESTEP
         track = []
+        cap_rgb.set(cv2.CAP_PROP_POS_FRAMES, START_FRAME)
+        cap_ir.set(cv2.CAP_PROP_POS_FRAMES, START_FRAME)
+
+        frame = 0
         while cap_rgb.isOpened() and cap_ir.isOpened():
             rgb_bboxes = []
             ir_bboxes = []
@@ -106,8 +110,13 @@ class BBoxTracker:
                 ir_bboxes.append((x, y, w, h))
                 cv2.rectangle(display2, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
+            # todo
+            #if frame % 10 == 0:
+            #    # todo Леша здесь должен предиктор звать
+
             # Time to send event
-            if passed > TIMESTEP:
+            frame += 1
+            if frame % 30 == 0:
                 last_frame_ticks = current_frame_ticks
 
                 timestamp = (tracking_frame_number - 1) * TIMESTEP
@@ -119,8 +128,7 @@ class BBoxTracker:
                     elif len(rgb_bboxes) == 0 and len(ir_bboxes) == 1:
                         bbox = ir_bboxes[0]
                     else:
-                        # TODO надо чекать находится ли новый ббокс в окрестности предыдущего а не сравнивать чисто текущие кадры
-                        bbox = next(x for x in self.__find_intersecting_boxes(rgb_bboxes, ir_bboxes)) # if x in ir_bboxes)
+                        bbox = next(x for x in self.__find_intersecting_boxes(rgb_bboxes, ir_bboxes))
 
                     # clear predictions, we now have real data
                     if lost_track:
@@ -155,6 +163,7 @@ class BBoxTracker:
                     state = ObjectState(x_res, y_res, 0, timestamp, None, None, None, None)
                     info[timestamp] = state
 
+                    # todo Леша это очищает данные для предиктора
                     # this erases old data (3 frames left)
                     info = {key: value for key, value in zip(info.keys(), info.values()) if value.t > timestamp - 3 * TIMESTEP}
                     # print(f"purged, {len(info)} left")
@@ -193,8 +202,12 @@ class BBoxTracker:
                         complete_object_state(o, info)
 
             for t in track:
-                cv2.circle(display1, (int(t[0]), int(t[1])), radius=5, color=(0, 0, 255), thickness=2)
-                cv2.circle(display2, (int(t[0]), int(t[1])), radius=5, color=(0, 0, 255), thickness=2)
+                try:
+                    cv2.circle(display1, (int(t[0]), int(t[1])), radius=5, color=(0, 0, 255), thickness=2)
+                    cv2.circle(display2, (int(t[0]), int(t[1])), radius=5, color=(0, 0, 255), thickness=2)
+                except:
+                    # Хз что случилось но бывает
+                    pass
 
             cv2.imshow(f"RGB{cam_id}", display1)
             cv2.imshow(f"IR{cam_id}", display2)
@@ -202,7 +215,6 @@ class BBoxTracker:
             # cv2.waitKey(0)  # For stepping through each frame
             if self.__exiting or cv2.waitKey(25) & 0xFF == ord('q'):
                 exit2()
-
 
     def start(self):
         for i in range(CAMERAS_COUNT):
