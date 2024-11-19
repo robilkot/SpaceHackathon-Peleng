@@ -9,12 +9,12 @@ writer = ExcelWriter(SETTINGS)
 
 cameras = writer.read_params()
 
-# coordinator = Coordinator(writer.write)
-coordinator = Coordinator(lambda msg: None)
+coordinator = Coordinator(writer.write)
+# coordinator = Coordinator(lambda msg: None)
 
 triangulator = Triangulator(cameras, coordinator.accept)
 
-tracker = BBoxTracker(lambda msg: None)
-# tracker = BBoxTracker(triangulator.transform)
+# tracker = BBoxTracker(lambda msg: None)
+tracker = BBoxTracker(triangulator.transform)
 
 tracker.start()
