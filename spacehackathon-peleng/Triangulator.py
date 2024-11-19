@@ -119,8 +119,10 @@ class Triangulator:
         print('\n'.join(f"{i}: {x is not None}" for i, x in scene))
 
         if scene.is_full():
-            for _, point in scene:
-                if point == 0:
+            print("The scene")
+            for point in scene.cam_dict.values():
+                print(point, point == 0)
+                if point is 0:
                     print("Triangulator: CoordinatesTriangulatedMessage with none has sent")
                     msg = CoordinatesTriangulatedMessage(
                         None,
@@ -131,6 +133,20 @@ class Triangulator:
                     )
                     self.on_triangulated(msg)
                     return
+
+            print("Triangulator: start computing")
+            print("Triangulator: ", self.cams[1].P, self.cams[2].P, scene[1], scene[2], sep='\n')
+            midpoint = cv2.triangulatePoints(self.cams[1].P, self.cams[2].P, scene[1], scene[2])
+            print(f"Triangulator: {midpoint = }")
+
+            msg = CoordinatesTriangulatedMessage(
+                float(midpoint[0]) / float(midpoint[3]),
+                float(midpoint[1]) / float(midpoint[3]),
+                float(midpoint[2]) / float(midpoint[3]),
+                mes.t,
+                0 # TODO
+            )
+            self.on_triangulated(msg)
 
             # B = []
             # for id, cam in self._cams.items():
@@ -164,16 +180,5 @@ class Triangulator:
             # B = np.asarray(B)
             # print(self.A, B)
             # midpoint = midpoint_triangulate(self.A, B)
-            
-            midpoint = cv2.triangulatePoints(self.cams[0].P, self.cams[1].P, scene[0], scene[1])
 
-            msg = CoordinatesTriangulatedMessage(
-                float(midpoint[0]),
-                float(midpoint[1]),
-                float(midpoint[2]),
-                mes.t,
-                0 # TODO
-            )
-            print("on_triangulated ", midpoint)
-            self.on_triangulated(msg)
             
