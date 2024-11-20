@@ -80,6 +80,7 @@ class BBoxTracker:
         cap_ir.set(cv2.CAP_PROP_POS_FRAMES, START_FRAME)
 
         circle_positions = []
+        tracking_frame_number = START_FRAME / FRAME_RATE
         frame = START_FRAME
         while cap_rgb.isOpened() and cap_ir.isOpened():
             rgb_bboxes = []
